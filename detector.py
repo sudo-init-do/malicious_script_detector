@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
-import matplotlib.pyplot as plt
+
 
 # 1. Create a synthetic dataset
 # 5 Benign scripts
