@@ -106,15 +106,19 @@ def main():
                     elif count % 100 == 0:
                         print(".", end='', flush=True)
 
-        print("\n" + "-" * 50)
-        print(f"[*] Scan complete. Scanned {count} Python files.")
+        print("\n" + "=" * 50)
+        print("SCAN SUMMARY")
+        print("=" * 50)
+        print(f"Total Files Scanned: {count}")
+        print(f"Malicious Detected:  {len(malicious_files)}")
+        print("-" * 50)
         
         if malicious_files:
-            print(f"\n[!!!] WARNING: FOUND {len(malicious_files)} MALICIOUS FILES:")
+            print(f"[!] THREATS FOUND:")
             for mf in malicious_files:
                 print(f"    -> {mf}")
         else:
-            print("\n[+] System Clean. No threats detected.")
+            print("[+] System Clean. No threats detected.")
             
     else:
         print("Error: Target is not a file or directory.")
