@@ -7,31 +7,11 @@ from sklearn.metrics import accuracy_score
 import argparse
 import sys
 import os
-import time
-
-def type_print(text, delay=0.02):
-    """Print text with a typewriter effect."""
-    for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(delay)
-    print()
-
-def progress_bar(label, duration=1.0, steps=20):
-    """Show a progress bar."""
-    sys.stdout.write(f"{label} [")
-    sys.stdout.flush()
-    step_delay = duration / steps
-    for i in range(steps):
-        sys.stdout.write("█")
-        sys.stdout.flush()
-        time.sleep(step_delay)
-    sys.stdout.write("] Done!\n")
 
 def load_data(filepath='dataset.csv'):
     """Load dataset from CSV file."""
     if not os.path.exists(filepath):
-        type_print(f"Error: Dataset file '{filepath}' not found.")
+        print(f"Error: Dataset file '{filepath}' not found.")
         sys.exit(1)
     return pd.read_csv(filepath)
 
@@ -43,85 +23,80 @@ def train_model(df):
     X = vectorizer.fit_transform(df['code'])
     y = df['label']
     
+    # Stratified split ensures we have examples of both classes even with small data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     model = MultinomialNB()
     model.fit(X_train, y_train)
     
-    # Evaluate
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    
-    return model, vectorizer, accuracy
+    return model, vectorizer
 
 def predict_script(model, vectorizer, script_code):
     """Predict if a script is MALICIOUS or BENIGN."""
     transformed_script = vectorizer.transform([script_code])
     prediction = model.predict(transformed_script)
+    # Get probability for confidence score (optional enhancement)
     return prediction[0]
 
+def scan_file(filepath, model, vectorizer):
+    """Scan a single file and print result."""
+    try:
+        with open(filepath, 'r', errors='ignore') as f:
+            code_content = f.read()
+        
+        result = predict_script(model, vectorizer, code_content)
+        
+        if result == "MALICIOUS":
+            print(f"[!] MALICIOUS DETECTED: {filepath}")
+        else:
+            print(f"[+] Clean: {filepath}")
+            
+    except Exception as e:
+        print(f"[!] Error reading {filepath}: {e}")
+
 def main():
-    parser = argparse.ArgumentParser(description="Malicious Script Detector")
-    parser.add_argument('--scan', type=str, help="Path to the python script to scan")
+    parser = argparse.ArgumentParser(description="Real Malicious Script Detector")
+    parser.add_argument('--scan', type=str, required=True, help="Path to file or directory to scan")
     parser.add_argument('--train-file', type=str, default='dataset.csv', help="Path to the training dataset CSV")
     args = parser.parse_args()
 
-    print("\n" + "="*40)
-    print("   MALICIOUS SCRIPT DETECTOR v1.0   ")
-    print("="*40 + "\n")
-    time.sleep(0.5)
-
-    type_print("[*] Initializing system core...")
-    time.sleep(0.5)
-
-    progress_bar("[*] Loading knowledge base", duration=1.5)
+    # 1. Load and Train
+    if not os.path.exists(args.train_file):
+        print(f"Error: Training file '{args.train_file}' not found. Cannot start detector.")
+        sys.exit(1)
+        
+    print(f"[*] Loading training data from {args.train_file}...")
     df = load_data(args.train_file)
-    type_print(f"    -> Loaded {len(df)} signatures.")
-    time.sleep(0.5)
     
-    progress_bar("[*] Training neural model ", duration=2.0)
-    model, vectorizer, accuracy = train_model(df)
-    type_print(f"    -> Model Accuracy: {accuracy * 100:.2f}%")
-    time.sleep(0.5)
-    
-    if args.scan:
-        target_file = args.scan
-        if not os.path.exists(target_file):
-            type_print(f"[!] Error: File '{target_file}' not found.")
-            return
+    print(f"[*] Training model on {len(df)} signatures...")
+    model, vectorizer = train_model(df)
+    print("[*] Model trained and ready.")
+    print("-" * 50)
 
-        try:
-            with open(target_file, 'r') as f:
-                code_content = f.read()
-            
-            print("-" * 40)
-            type_print(f"[*] Target locked: {target_file}")
-            progress_bar("[*] Scanning file contents", duration=2.5)
-            
-            type_print("[*] Analyzing heuristics...", delay=0.05)
-            time.sleep(1.0)
-            
-            result = predict_script(model, vectorizer, code_content)
-            
-            print("-" * 40)
-            if result == "MALICIOUS":
-                type_print(f"    >>> RESULT: {result} <<<", delay=0.1)
-                print("    [!] THREAT DETECTED! IMMEDIATE ACTION REQUIRED!")
-            else:
-                type_print(f"    >>> RESULT: {result} <<<", delay=0.1)
-                print("    [+] File appears safe.")
-            print("-" * 40)
-            
-        except Exception as e:
-            print(f"Error reading file: {e}")
+    # 2. Scan Target
+    target_path = args.scan
+    
+    if not os.path.exists(target_path):
+        print(f"Error: Target '{target_path}' not found.")
+        sys.exit(1)
+
+    if os.path.isfile(target_path):
+        print(f"[*] Scanning file: {target_path}")
+        scan_file(target_path, model, vectorizer)
+    elif os.path.isdir(target_path):
+        print(f"[*] Recursively scanning directory: {target_path}")
+        count = 0
+        malicious_count = 0
+        for root, _, files in os.walk(target_path):
+            for file in files:
+                if file.endswith('.py'):  # Only scan python files for this prototype
+                    filepath = os.path.join(root, file)
+                    scan_file(filepath, model, vectorizer)
+                    count += 1
+        print("-" * 50)
+        print(f"[*] Scan complete. Scanned {count} Python files.")
     else:
-        # Default demo behavior if no scan argument provided
-        print("\n--- Demo Prediction ---")
-        test_snippet = "import os; os.system('echo malicious')"
-        progress_bar("[*] Analyzing demo snippet", duration=1.0)
-        result = predict_script(model, vectorizer, test_snippet)
-        print(f"Snippet: {test_snippet}")
-        type_print(f"Prediction: {result}")
+        print("Error: Target is not a file or directory.")
 
 if __name__ == "__main__":
     main()
