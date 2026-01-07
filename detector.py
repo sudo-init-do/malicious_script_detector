@@ -39,20 +39,16 @@ def predict_script(model, vectorizer, script_code):
     return prediction[0]
 
 def scan_file(filepath, model, vectorizer):
-    """Scan a single file and print result."""
+    """Scan a single file and return result."""
     try:
         with open(filepath, 'r', errors='ignore') as f:
             code_content = f.read()
         
-        result = predict_script(model, vectorizer, code_content)
-        
-        if result == "MALICIOUS":
-            print(f"[!] MALICIOUS DETECTED: {filepath}")
-        else:
-            print(f"[+] Clean: {filepath}")
+        return predict_script(model, vectorizer, code_content)
             
     except Exception as e:
-        print(f"[!] Error reading {filepath}: {e}")
+        # print(f"[!] Error reading {filepath}: {e}")
+        return "ERROR"
 
 def main():
     parser = argparse.ArgumentParser(description="Real Malicious Script Detector")
@@ -82,19 +78,44 @@ def main():
 
     if os.path.isfile(target_path):
         print(f"[*] Scanning file: {target_path}")
-        scan_file(target_path, model, vectorizer)
+        res = scan_file(target_path, model, vectorizer)
+        print("-" * 50)
+        if res == "MALICIOUS":
+            print(f"\n[!] 1 MALICIOUS FILE FOUND:\n    - {target_path}")
+        else:
+            print("\n[+] No malicious files found.")
+            
     elif os.path.isdir(target_path):
         print(f"[*] Recursively scanning directory: {target_path}")
+        print("[*] progress: ", end='', flush=True)
+        
         count = 0
-        malicious_count = 0
+        malicious_files = []
+        
         for root, _, files in os.walk(target_path):
             for file in files:
-                if file.endswith('.py'):  # Only scan python files for this prototype
+                if file.endswith('.py'):
                     filepath = os.path.join(root, file)
-                    scan_file(filepath, model, vectorizer)
+                    result = scan_file(filepath, model, vectorizer)
                     count += 1
-        print("-" * 50)
+                    
+                    if result == "MALICIOUS":
+                        malicious_files.append(filepath)
+                        print(f"\n[!] MALICIOUS DETECTED: {filepath}")
+                        print("[*] progress: ", end='', flush=True)
+                    elif count % 100 == 0:
+                        print(".", end='', flush=True)
+
+        print("\n" + "-" * 50)
         print(f"[*] Scan complete. Scanned {count} Python files.")
+        
+        if malicious_files:
+            print(f"\n[!!!] WARNING: FOUND {len(malicious_files)} MALICIOUS FILES:")
+            for mf in malicious_files:
+                print(f"    -> {mf}")
+        else:
+            print("\n[+] System Clean. No threats detected.")
+            
     else:
         print("Error: Target is not a file or directory.")
 
